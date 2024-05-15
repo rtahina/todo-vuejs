@@ -1,54 +1,104 @@
-<template>
-    <div class="todo">
-        <h2>ToDo</h2>
-        <ToDoForm />
-        <div class="todo-list-wrapper">
-            <span v-if="loading" class="loader">Loading...</span>
-            <span v-else>
-                <div v-for="item in todos" :key="item.id">
-                    <TodoListIem 
-                    :userId="item.userId"
-                    :id="item.id"
-                    :title="item.title"
-                    :completed="item.completed"
-                    />
-                </div>
-            </span>
-        </div>
-    </div>
-</template>
-
 <script setup>
-    import { ref } from "vue";
+    import { storeToRefs } from 'pinia'
+    import { ref, watch } from "vue";
     import TodoListIem from "./TodoListIem.vue";
-    import ToDoForm from "./ToDoForm.vue";
-    import { getTodos } from "../composables/Todos.js";
+    import { useToDoStore } from "@/Stores/useToDoStore";
+    import Loader from "./Loader.vue"
     
-    const loading = ref(false);
-    const { isLoading, isReady, todos, error } = getTodos();
-    loading.value = isLoading.value;
+    const isLoading = ref(false);
+    const isReady = ref(false);
+    const error = ref('');
+    const items = ref([]);
+    const store = useToDoStore();
+    const { todo, isNewItem } = storeToRefs(store);
+    const nbrItems = ref(0);
+    const nbrCompleted = ref(0);
+
+    const fetchTodos = async() => {
+        error.value = undefined;
+        isLoading.value = true;
+        isReady.value = false;
+        
+        try {
+            const data = fetch("https://jsonplaceholder.typicode.com/todos")
+            .then(data => data.json())
+            .then(data => {
+                data = data.slice(0, 10); // 10 todos
+                items.value = data;
+                isReady.value = true;
+                nbrItems.value = data.length;
+                nbrCompleted.value = countCompleted();
+            })
+        } catch (e) {
+            error.value = e.message;
+        } finally {
+            isLoading.value = false;
+        }
+    }
+    fetchTodos();
+
+    watch(isNewItem, () => {
+        const newArr = [...items.value];
+        const temp = todo.value; 
+        newArr.push(temp);
+        items.value = newArr;
+        nbrItems.value = items.value.length;
+        nbrCompleted.value = countCompleted();
+        console.log('Add on list');
+    });
+
+    const countCompleted = () => {
+        const completed = items.value.filter(item => {
+            return item.completed;
+        });
+
+        return completed.length;
+    }
+
+    const toogleComplete = (id) => {
+        items.value.find((o, i) => {
+            if (o.id === id) {
+                items.value[i] = { 
+                    userId: o.userId, 
+                    id: o.id, 
+                    title: o.title, 
+                    completed: !o.completed 
+                };
+                return true;
+            }
+        });
+        nbrCompleted.value = countCompleted();
+    }
 </script>
 
+<template>
+    <span v-if="!isReady">
+        <Loader />
+    </span>
+    <span v-else>
+        <div class="stats">
+            <span>{{ nbrItems }} items</span>
+            <span>{{ nbrCompleted }} completed</span> 
+            <span><input type="checkbox" /> Hide completed</span>
+        </div>
+        <div v-for="item in items" :key="item.id">
+            <TodoListIem 
+            :userId="item.userId"
+            :id="item.id"
+            :title="item.title"
+            :completed="item.completed"
+            @mark-complete="toogleComplete"
+        />
+        </div>
+    </span>
+</template>
+
 <style scoped>
-    .todo {
-        width: 50%;
-        margin: 0 auto;
-        padding: 0.5rem;
-    }
-    h2 {
-        font-size: 2rem;
-        font-weight: 600;
-        text-align: center;
-    }
-    .todo-list-wrapper {
-        display: block;
-        border: 2px solid #aaa;
-        padding: 0.5rem;
-    }
-    .loader {
-        display: block;
-        padding:1rem;
-        text-align: center;
-        margin:1rem auto;
+    .stats {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0.5rem;
+        background-color: #efefef;
+        margin-bottom: 0.5rem;
     }
 </style>

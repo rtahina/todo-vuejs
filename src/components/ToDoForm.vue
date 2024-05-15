@@ -1,7 +1,24 @@
+<script setup>
+    import { ref } from 'vue';
+    import { useToDoStore } from "@/Stores/useToDoStore";
+
+    const newTodoItem = ref('');
+    const emit = defineEmits(['newitem']);
+    const store = useToDoStore();
+
+    const addNewItem = () =>{
+        const tempTitle = newTodoItem.value; 
+        store.addTodo(tempTitle);
+        console.log('Add on form');
+        store.isNewItem = !store.isNewItem;
+        newTodoItem.value = '';
+    }
+</script>
+
 <template>
-    <form>
-        <input type="text" />
-        <button>Add</button>
+    <form @submit.prevent="">
+        <input type="text" @keyup.enter="addNewItem" v-model="newTodoItem" />
+        <button @click="addNewItem">Add</button>
     </form>
 </template>
 

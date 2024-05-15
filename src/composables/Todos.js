@@ -1,10 +1,12 @@
 import { ref } from "vue";
+import { useToDoStore } from "@/Stores/useToDoStore";
 
 export function getTodos () {
     const isLoading = ref(false);
     const isReady = ref(false);
     const todos = ref([]);
-    const error = ref(undefined)
+    const error = ref(undefined);
+    const store = useToDoStore();
 
     const fetchTodos = async() => {
         error.value = undefined;
@@ -16,6 +18,7 @@ export function getTodos () {
             .then(data => data.json())
             .then(data => {
                 todos.value = data;
+                store.setTodos(data);
                 isReady.value = true;
             })
         } catch (e) {
